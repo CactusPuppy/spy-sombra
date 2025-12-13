@@ -1,0 +1,59 @@
+void TriggerDMEvent(in DisguiseMenuEvent event) {
+  # === Disguise Menu State Machine Start ===
+  disguiseMenuEvent = event;
+  DMStateMachine();
+}
+
+void DMStateMachine() playervar "[SUB]: State machine for processing a disguise menu event" {
+  switch (disguiseMenuState) {
+    case DisguiseMenuState.CLOSED:
+      DMStateMachine_CLOSED();
+      break;
+    case DisguiseMenuState.OPEN:
+      DMStateMachine_OPEN();
+      break;
+    case DisguiseMenuState.DISGUISED:
+      DMStateMachine_DISGUISED();
+      break;
+  }
+  # === Disguise Menu State Machine End ===
+  disguiseMenuEvent = DisguiseMenuEvent.NONE;
+}
+
+void DMStateMachine_CLOSED() {
+  switch (disguiseMenuEvent) {
+    case DisguiseMenuEvent.REQUEST_OPEN:
+      OpenDisguiseMenu();
+      disguiseMenuState = DisguiseMenuState.OPEN;
+      break;
+  }
+}
+
+void DMStateMachine_OPEN() {
+  switch (disguiseMenuEvent) {
+    case DisguiseMenuEvent.SELECT_DISGUISE:
+      disguisedIndex = disguiseSelectionIndex;
+      AttachDisguise(EventPlayer());
+      disguiseMenuState = DisguiseMenuState.DISGUISED;
+      CloseDisguiseMenu();
+      break;
+    case DisguiseMenuEvent.DROPPED_DISGUISE:
+      DetachDisguise(EventPlayer());
+    case DisguiseMenuEvent.REQUEST_CLOSE:
+      CloseDisguiseMenu();
+      disguiseMenuState = DisguiseMenuState.CLOSED;
+      break;
+  }
+}
+
+void DMStateMachine_DISGUISED() {
+  switch (disguiseMenuEvent) {
+    case DisguiseMenuEvent.REQUEST_OPEN:
+      OpenDisguiseMenu();
+      disguiseMenuState = DisguiseMenuState.OPEN;
+      break;
+    case DisguiseMenuEvent.DROPPED_DISGUISE:
+      DetachDisguise(EventPlayer());
+      break;
+  }
+}

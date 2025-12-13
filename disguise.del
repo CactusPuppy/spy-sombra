@@ -1,0 +1,82 @@
+globalvar Player[] disguiseBots = [];
+
+Number playerTeamIndex(Player p = EventPlayer()): TeamOf(p) == Team.Team2 ? 1 : 0;
+Player disguiseBot(Player p = EventPlayer()): disguiseBots[playerTeamIndex(p)];
+
+disabled rule: "Initialize disguise bots"
+if (IsAssemblingHeroes())
+{
+  WaitUntil(!IsAssemblingHeroes(), 1000000);
+  disguiseBots[0] = CreateDummyBot(
+    Hero: Hero.Echo,
+    Team: Team.Team2,
+    Slot: 5,
+    Position: Vector(0, 1000, 0),
+  );
+
+  disguiseBots[1] = CreateDummyBot(
+    Hero: Hero.Echo,
+    Team: Team.Team1,
+    Slot: 5,
+    Position: Vector(0, 1000, 0),
+  );
+  SetStatus(disguiseBots, null, Status.PhasedOut, 1000000);
+  DisableMovementCollisionWithPlayers(disguiseBots);
+  StartForcingPlayerPosition(disguiseBots, 1000 * Up(), false);
+  SetInvisible(disguiseBots, InvisibleTo.All);
+  WaitUntil(IsAssemblingHeroes() || IsMatchComplete(), 1000000);
+  DestroyDummyBot(disguiseBots[0]);
+  DestroyDummyBot(disguiseBots[1]);
+}
+
+rule: "Prevent dummy bot from yapping"
+Event.OngoingPlayer
+if (IsDummyBot())
+{
+  MinWait();
+  SetStatus(EventPlayer(), null, Status.Hacked, 0.2);
+}
+
+rule: "If dummy bot dies, delete it"
+Event.OnDeath
+if (IsDummyBot())
+{
+  DestroyDummyBot(EventPlayer());
+}
+
+
+playervar Any disguiseEffect;
+Player disguiseTarget(in Player p = EventPlayer()): disguisableOpps(p)[p.disguisedIndex];
+void AttachDisguise(in Player disguisingPlayer) {
+  disguiseBots[playerTeamIndex(disguisingPlayer)] = CreateDummyBot(HeroOf(disguiseTarget(disguisingPlayer)), opps(disguisingPlayer), 5, PositionOf(disguisingPlayer), FacingDirectionOf(disguisingPlayer));
+  // MinWait();
+  SetStatus(disguiseBots, null, Status.PhasedOut, 1000000);
+  DisableMovementCollisionWithPlayers(disguiseBots);
+  StartForcingDummyBotName(disguiseBot(disguisingPlayer), $"{disguiseTarget(disguisingPlayer)}");
+  SetInvisible(disguisingPlayer, InvisibleTo.All);
+  disguisingPlayer.disguiseEffect = CreateEffect(
+    VisibleTo: AllPlayers(TeamOf(disguisingPlayer)),
+    Type: Effect.EchoCloningEffect,
+    Color: TeamOf(disguisingPlayer),
+    Position: disguiseBot(disguisingPlayer),
+    Radius: 0,
+    Reevaluation: EffectRev.VisibleToPositionAndRadius,
+  );
+  StopForcingPlayerPosition(disguiseBot(disguisingPlayer));
+  StartForcingPlayerPosition(disguiseBot(disguisingPlayer), UpdateEveryFrame(disguisingPlayer), true);
+  StartCamera(
+    Player: disguisingPlayer,
+    EyePosition: UpdateEveryFrame(EyePosition(disguisingPlayer) + -5 * FacingDirectionOf(disguisingPlayer)),
+    LookAtPosition: UpdateEveryFrame(EyePosition(disguisingPlayer)),
+    BlendSpeed: 1000,
+  );
+  StartFacing(disguiseBot(disguisingPlayer), UpdateEveryFrame(FacingDirectionOf(disguisingPlayer)), 1000, Relative.ToWorld, FacingRev.DirectionAndTurnRate);
+  StartThrottleInDirection(disguiseBot(disguisingPlayer), ThrottleOf(disguisingPlayer), MagnitudeOf(ThrottleOf(disguisingPlayer)), Relative.ToPlayer, ThrottleBehavior.ReplaceExistingThrottle, ThrottleRev.DirectionAndMagnitude);
+}
+
+void DetachDisguise(in Player disguisingPlayer) {
+  SetInvisible(disguisingPlayer, InvisibleTo.None);
+  DestroyEffect(disguisingPlayer.disguiseEffect);
+  StopCamera(disguisingPlayer);
+  DestroyDummyBot(opps(disguisingPlayer), 5);
+}

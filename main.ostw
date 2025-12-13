@@ -1,0 +1,143 @@
+globalvar Number i;
+globalvar Button PREVIOUS_DISGUISE_BUTTON = Button.PrimaryFire;
+globalvar Button NEXT_DISGUISE_BUTTON = [
+  Button.Ability1,
+  Button.SecondaryFire
+][WorkshopSettingCombo("1. Settings", "Next Disguise Button", 0, [
+  "Ability 1 - Virus",
+  "Secondary Fire - Hack"
+], 0)];
+
+enum DisguiseMenuState {
+  CLOSED = "Closed",
+  OPEN = "Open",
+  DISGUISED = "Disguised"
+}
+enum DisguiseMenuEvent {
+  NONE = "None",
+  DROPPED_DISGUISE = "Dropped Disguise",
+  REQUEST_OPEN = "Request Open",
+  REQUEST_CLOSE = "Request Close",
+  SELECT_DISGUISE = "Select Disguise"
+}
+playervar DisguiseMenuState disguiseMenuState = DisguiseMenuState.CLOSED;
+playervar DisguiseMenuEvent disguiseMenuEvent = DisguiseMenuEvent.NONE;
+
+playervar Number disguiseSelectionIndex; // The player's selection within the disguise menu
+playervar Number disguisedIndex; // The player's actual disguise
+playervar Any[] disguiseMenuTexts = [];
+
+Team opps(Player p = EventPlayer()): OppositeTeamOf(TeamOf(p));
+Player[] disguisableOpps(Player p = EventPlayer()): AllPlayers(opps(p)).Filter(p2 => SlotOf(p2) < 5);
+
+rule: 'Disable scoreboard (it gives the bot away)'
+Event.OngoingPlayer
+if (DEBUG_MODE == false)
+if (IsInSetup() || IsGameInProgress())
+{
+  DisableScoreboard();
+  WaitUntil(IsInSetup() == IsGameInProgress(), 1000000);
+}
+
+rule: "When a Sombra holds Interact, open the disguise menu"
+Event.OngoingPlayer
+Player.Sombra
+if (IsButtonHeld(EventPlayer(), Button.Interact))
+{
+  Wait(0.25, WaitBehavior.AbortWhenFalse);
+  TriggerDMEvent(DisguiseMenuEvent.REQUEST_OPEN);
+  WaitUntil(!IsButtonHeld(EventPlayer(), Button.Interact), 1000000);
+  if (disguiseSelectionIndex < disguisableOpps().Length) {
+    TriggerDMEvent(DisguiseMenuEvent.SELECT_DISGUISE);
+  } else {
+    TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
+  }
+}
+
+rule: "Break disguise when Sombra does aggressive action"
+Event.OngoingPlayer
+Player.Sombra
+if (IsFiringPrimary(EventPlayer())
+  || IsMeleeing(EventPlayer())
+  || IsUsingAbility1(EventPlayer())
+  || IsUsingAbility2(EventPlayer())
+  || IsUsingUltimate(EventPlayer())
+)
+{
+  TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
+}
+
+rule: "Break disguise when the Sombra dies"
+Event.OnDeath
+if (!IsDummyBot())
+{
+  TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
+}
+
+rule: "Move disguise selection to the previous option"
+Event.OngoingPlayer
+if (IsButtonHeld(EventPlayer(), PREVIOUS_DISGUISE_BUTTON))
+{
+  AbortIf(disguiseMenuState != DisguiseMenuState.OPEN);
+  disguiseSelectionIndex -= 1;
+  if (disguiseSelectionIndex < 0) {
+    disguiseSelectionIndex = disguisableOpps().Length;
+  }
+}
+
+rule: "Move disguise selection to the next option"
+Event.OngoingPlayer
+if (IsButtonHeld(EventPlayer(), NEXT_DISGUISE_BUTTON))
+{
+  AbortIf(disguiseMenuState != DisguiseMenuState.OPEN);
+  disguiseSelectionIndex += 1;
+  if (disguiseSelectionIndex > disguisableOpps().Length) {
+    disguiseSelectionIndex = 0;
+  }
+}
+
+void OpenDisguiseMenu() playervar "[SUB]: Open the disguise menu for the player" {
+  if (PREVIOUS_DISGUISE_BUTTON == Button.PrimaryFire) SetPrimaryFireEnabled(EventPlayer(), false);
+  DisallowButton(EventPlayer(), PREVIOUS_DISGUISE_BUTTON);
+  DisallowButton(EventPlayer(), NEXT_DISGUISE_BUTTON);
+  disguiseSelectionIndex = disguisedIndex;
+  for (i = 0; disguisableOpps().Length; 1) {
+    CreateHudText(
+      VisibleTo:          EntityExists(disguisableOpps()[EvaluateOnce(i)]) ? EventPlayer() : null,
+      Header:             $" {HeroIconString(HeroOf(disguisableOpps()[EvaluateOnce(i)]))} ",
+      Subheader:          HeroOf(disguisableOpps()[EvaluateOnce(i)]),
+      Text:               disguisableOpps()[EvaluateOnce(i)],
+      SortOrder:          EvaluateOnce(i),
+      HeaderColor:        EventPlayer().disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.Gray,
+      Reevaluation:       HudTextRev.VisibleToStringAndColor,
+      Spectators:         Spectators.VisibleNever
+    );
+    disguiseMenuTexts.ModAppend(LastTextID());
+  }
+  CreateHudText(
+    VisibleTo:            EventPlayer(),
+    Header:               $" {IconString(Icon.No)} ",
+    Subheader:            "No Disguise",
+    Text:                 "Cancel",
+    SortOrder:            EvaluateOnce(i),
+    HeaderColor:          EventPlayer().disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.Red,
+    Reevaluation:         HudTextRev.VisibleToStringAndColor,
+    Spectators:           Spectators.VisibleNever
+  );
+  disguiseMenuTexts.ModAppend(LastTextID());
+}
+
+void CloseDisguiseMenu() playervar "[SUB]: Close the disguise menu for the player" {
+  if (PREVIOUS_DISGUISE_BUTTON == Button.PrimaryFire) SetPrimaryFireEnabled(EventPlayer(), true);
+  AllowButton(EventPlayer(), PREVIOUS_DISGUISE_BUTTON);
+  AllowButton(EventPlayer(), NEXT_DISGUISE_BUTTON);
+  while (disguiseMenuTexts.Length > 0) {
+    DestroyHudText(disguiseMenuTexts.First);
+    disguiseMenuTexts.ModRemoveByIndex(0);
+  }
+}
+
+import "disguise.del";
+import "stateMachine.del";
+
+import "debug.del";

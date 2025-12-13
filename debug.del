@@ -1,0 +1,26 @@
+globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG", "Debug Mode Enabled", true, -100);
+
+rule: "[DEBUG] Create bots to clone"
+if (DEBUG_MODE)
+if (HasSpawned(HostPlayer()))
+{
+  CreateDummyBot(RandomValueInArray(AllHeroes()), OppositeTeamOf(TeamOf(HostPlayer())), -1, null, null);
+  CreateDummyBot(RandomValueInArray(AllHeroes()), OppositeTeamOf(TeamOf(HostPlayer())), -1, null, null);
+  CreateDummyBot(RandomValueInArray(AllHeroes()), OppositeTeamOf(TeamOf(HostPlayer())), -1, null, null);
+  CreateDummyBot(RandomValueInArray(AllHeroes()), OppositeTeamOf(TeamOf(HostPlayer())), -1, null, null);
+  // CreateDummyBot(RandomValueInArray(AllHeroes()), OppositeTeamOf(TeamOf(HostPlayer())), -1, null, null);
+}
+
+rule: "[DEBUG] shorten assembling heroes"
+if (DEBUG_MODE)
+if (IsAssemblingHeroes())
+{
+  SetMatchTime(5);
+}
+
+rule: "[DEBUG] shorten setup"
+if (DEBUG_MODE)
+if (IsInSetup())
+{
+  SetMatchTime(5);
+}
