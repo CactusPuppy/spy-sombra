@@ -32,7 +32,7 @@ void DMStateMachine_CLOSED() {
 void DMStateMachine_OPEN() {
   switch (disguiseMenuEvent) {
     case DisguiseMenuEvent.SELECT_DISGUISE:
-      disguisedIndex = disguiseSelectionIndex;
+      disguiseTarget = disguisableOpps[disguiseSelectionIndex];
       AttachDisguise(EventPlayer());
       disguiseMenuState = DisguiseMenuState.DISGUISED;
       CloseDisguiseMenu();

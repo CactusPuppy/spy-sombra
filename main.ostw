@@ -1,3 +1,5 @@
+import "OSTWUtils/String.del";
+
 globalvar Number i;
 globalvar Button PREVIOUS_DISGUISE_BUTTON = Button.PrimaryFire;
 globalvar Button NEXT_DISGUISE_BUTTON = [
@@ -24,11 +26,12 @@ playervar DisguiseMenuState disguiseMenuState = DisguiseMenuState.CLOSED;
 playervar DisguiseMenuEvent disguiseMenuEvent = DisguiseMenuEvent.NONE;
 
 playervar Number disguiseSelectionIndex; // The player's selection within the disguise menu
-playervar Number disguisedIndex; // The player's actual disguise
+playervar Player disguiseTarget;
 playervar Any[] disguiseMenuTexts = [];
 
 Team opps(Player p = EventPlayer()): OppositeTeamOf(TeamOf(p));
-Player[] disguisableOpps(Player p = EventPlayer()): AllPlayers(opps(p)).Filter(p2 => SlotOf(p2) < 5);
+Player[] disguisableOppsRaw(Player p = EventPlayer()): AllPlayers(opps(p)).Filter(p2 => SlotOf(p2) < 5);
+playervar Player[] disguisableOpps;
 
 rule: 'Disable scoreboard (it gives the bot away)'
 Event.OngoingPlayer
@@ -47,7 +50,7 @@ if (IsButtonHeld(EventPlayer(), Button.Interact))
   Wait(0.25, WaitBehavior.AbortWhenFalse);
   TriggerDMEvent(DisguiseMenuEvent.REQUEST_OPEN);
   WaitUntil(!IsButtonHeld(EventPlayer(), Button.Interact), 1000000);
-  if (disguiseSelectionIndex < disguisableOpps().Length) {
+  if (disguiseSelectionIndex < disguisableOpps.Length) {
     TriggerDMEvent(DisguiseMenuEvent.SELECT_DISGUISE);
   } else {
     TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
@@ -81,7 +84,7 @@ if (IsButtonHeld(EventPlayer(), PREVIOUS_DISGUISE_BUTTON))
   AbortIf(disguiseMenuState != DisguiseMenuState.OPEN);
   disguiseSelectionIndex -= 1;
   if (disguiseSelectionIndex < 0) {
-    disguiseSelectionIndex = disguisableOpps().Length;
+    disguiseSelectionIndex = disguisableOpps.Length;
   }
 }
 
@@ -91,7 +94,7 @@ if (IsButtonHeld(EventPlayer(), NEXT_DISGUISE_BUTTON))
 {
   AbortIf(disguiseMenuState != DisguiseMenuState.OPEN);
   disguiseSelectionIndex += 1;
-  if (disguiseSelectionIndex > disguisableOpps().Length) {
+  if (disguiseSelectionIndex > disguisableOpps.Length) {
     disguiseSelectionIndex = 0;
   }
 }
@@ -100,13 +103,15 @@ void OpenDisguiseMenu() playervar "[SUB]: Open the disguise menu for the player"
   if (PREVIOUS_DISGUISE_BUTTON == Button.PrimaryFire) SetPrimaryFireEnabled(EventPlayer(), false);
   DisallowButton(EventPlayer(), PREVIOUS_DISGUISE_BUTTON);
   DisallowButton(EventPlayer(), NEXT_DISGUISE_BUTTON);
-  disguiseSelectionIndex = disguisedIndex;
-  for (i = 0; disguisableOpps().Length; 1) {
+  disguisableOpps = disguisableOppsRaw();
+  if (EntityExists(disguiseTarget))
+    disguiseSelectionIndex = disguisableOpps.IndexOf(disguiseTarget);
+  for (i = 0; disguisableOpps.Length; 1) {
     CreateHudText(
-      VisibleTo:          EntityExists(disguisableOpps()[EvaluateOnce(i)]) ? EventPlayer() : null,
-      Header:             $" {HeroIconString(HeroOf(disguisableOpps()[EvaluateOnce(i)]))} ",
-      Subheader:          HeroOf(disguisableOpps()[EvaluateOnce(i)]),
-      Text:               disguisableOpps()[EvaluateOnce(i)],
+      VisibleTo:          EntityExists(disguisableOpps[EvaluateOnce(i)]) ? EventPlayer() : null,
+      Header:             $" {HeroIconString(HeroOf(disguisableOpps[EvaluateOnce(i)]))} ",
+      Subheader:          HeroOf(disguisableOpps[EvaluateOnce(i)]),
+      Text:               <"<0><1><2>", disguisableOpps[EvaluateOnce(i)], MANY_SPACES, MANY_SPACES>,
       SortOrder:          EvaluateOnce(i),
       HeaderColor:        EventPlayer().disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.Gray,
       Reevaluation:       HudTextRev.VisibleToStringAndColor,
@@ -118,9 +123,9 @@ void OpenDisguiseMenu() playervar "[SUB]: Open the disguise menu for the player"
     VisibleTo:            EventPlayer(),
     Header:               $" {IconString(Icon.No)} ",
     Subheader:            "No Disguise",
-    Text:                 "Cancel",
-    SortOrder:            EvaluateOnce(i),
-    HeaderColor:          EventPlayer().disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.Red,
+    Text:                 "Cancel" + MANY_SPACES + MANY_SPACES,
+    SortOrder:            disguisableOpps.Length,
+    HeaderColor:          EventPlayer().disguiseSelectionIndex == disguisableOpps.Length ? Color.Yellow : Color.Red,
     Reevaluation:         HudTextRev.VisibleToStringAndColor,
     Spectators:           Spectators.VisibleNever
   );
