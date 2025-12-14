@@ -74,15 +74,25 @@ if (IsButtonHeld(EventPlayer(), Button.Interact))
   }
 }
 
-rule: "When a Sombra uses Translocator, cancel stealth"
+rule: "When Sombra translocates, cancel Stealth if set up"
 Event.OngoingPlayer
 Player.Sombra
+if (WorkshopSettingToggle("1. Settings", "Remove Stealth from Translocator", true, 2))
 if (IsUsingAbility2())
 {
-  WaitUntil(HasStatus(EventPlayer(), Status.PhasedOut), 1);
+  WaitUntil(HasStatus(EventPlayer(), Status.PhasedOut), 0.35);
   AbortIf(!HasStatus(EventPlayer(), Status.PhasedOut));
-  Wait(0.95, WaitBehavior.IgnoreCondition);
+  WaitUntil(!HasStatus(EventPlayer(), Status.PhasedOut), 0.5);
+  Wait(0.5);
   PressButton(EventPlayer(), Button.Melee);
+}
+
+rule: "When a Sombra swaps off Sombra, drop their disguise"
+Event.OngoingPlayer
+if (HeroOf() == Hero.Sombra)
+{
+  WaitUntil(HeroOf() != Hero.Sombra, 1000000);
+  TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
 }
 
 rule: "Break disguise when Sombra does aggressive action"
@@ -142,6 +152,26 @@ void OpenDisguiseMenu() playervar "[SUB]: Open the disguise menu for the player"
   disguisableOpps = disguisableOppsRaw();
   if (EntityExists(disguiseTarget))
     disguiseSelectionIndex = disguisableOpps.IndexOf(disguiseTarget);
+  OnScreenText.CreateOnScreenText(
+    VisibleTo:            EventPlayer(),
+    Header:               <"< <0>", InputBindingString(PREVIOUS_DISGUISE_BUTTON)>,
+    PositionX:            MENU_ITEM_X(EventPlayer(), -1),
+    PositionY:            MENU_Y + 0.15,
+    Scale:                3,
+    Reevaluation:         InworldTextRev.VisibleToPositionStringAndColor,
+    Color:                IsButtonHeld(EventPlayer(), PREVIOUS_DISGUISE_BUTTON) ? Color.Green : Color.Gray,
+  );
+  disguiseMenuTexts.ModAppend(LastTextID());
+  OnScreenText.CreateOnScreenText(
+    VisibleTo:            EventPlayer(),
+    Header:               <"<0> >", InputBindingString(NEXT_DISGUISE_BUTTON)>,
+    PositionX:            MENU_ITEM_X(EventPlayer(), disguisableOpps.Length + 1),
+    PositionY:            MENU_Y + 0.15,
+    Scale:                3,
+    Reevaluation:         InworldTextRev.VisibleToPositionStringAndColor,
+    Color:                IsButtonHeld(EventPlayer(), NEXT_DISGUISE_BUTTON) ? Color.Yellow : Color.Gray,
+  );
+  disguiseMenuTexts.ModAppend(LastTextID());
   for (i = 0; disguisableOpps.Length; 1) {
     OnScreenText.CreateOnScreenText(
       VisibleTo:          EntityExists(disguisableOpps[EvaluateOnce(i)]) ? EventPlayer() : null,
@@ -157,12 +187,15 @@ void OpenDisguiseMenu() playervar "[SUB]: Open the disguise menu for the player"
     disguiseMenuTexts.ModAppend(LastTextID());
     OnScreenText.CreateOnScreenText(
       VisibleTo:          EntityExists(disguisableOpps[EvaluateOnce(i)]) ? EventPlayer() : null,
-      Header:             disguisableOpps[EvaluateOnce(i)],
+      Header:             <"<1><0><2>",
+                            disguisableOpps[EvaluateOnce(i)],
+                            disguiseSelectionIndex == EvaluateOnce(i) ? "[" : "",
+                            disguiseSelectionIndex == EvaluateOnce(i) ? "]" : "">,
       PositionX:          MENU_ITEM_X(EventPlayer(), EvaluateOnce(i)),
       PositionY:          MENU_Y,
       Scale:              1.25,
       Reevaluation:       InworldTextRev.VisibleToPositionStringAndColor,
-      Color:              disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.White,
+      Color:              disguiseSelectionIndex == EvaluateOnce(i) ? Color.Green : Color.White,
       Spectators:         Spectators.DefaultVisibility,
       PerspectivePlayer:  EventPlayer(),
     );
@@ -182,12 +215,14 @@ void OpenDisguiseMenu() playervar "[SUB]: Open the disguise menu for the player"
   disguiseMenuTexts.ModAppend(LastTextID());
   OnScreenText.CreateOnScreenText(
     VisibleTo:            EventPlayer(),
-    Header:               "No Disguise",
+    Header:               <"<0>No Disguise<1>",
+                            disguiseSelectionIndex == disguisableOpps.Length ? "[" : "",
+                            disguiseSelectionIndex == disguisableOpps.Length ? "]" : "">,
     PositionX:            MENU_ITEM_X(EventPlayer(), disguisableOpps.Length),
     PositionY:            MENU_Y,
     Scale:                1.25,
-    Reevaluation:         InworldTextRev.VisibleToPositionAndColor,
-    Color:                disguiseSelectionIndex == disguisableOpps.Length ? Color.Yellow : Color.White,
+    Reevaluation:         InworldTextRev.VisibleToPositionStringAndColor,
+    Color:                disguiseSelectionIndex == disguisableOpps.Length ? Color.Red : Color.White,
     Spectators:           Spectators.DefaultVisibility,
     PerspectivePlayer:    EventPlayer(),
   );

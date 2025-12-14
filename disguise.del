@@ -1,3 +1,4 @@
+import "OSTWUtils/Miscellaneous.del";
 globalvar Player[] disguiseBots = [];
 
 Number playerTeamIndex(Player p = EventPlayer()): TeamOf(p) == Team.Team2 ? 1 : 0;
@@ -41,6 +42,15 @@ if (IsDummyBot())
 
 playervar Any disguiseEffect;
 void AttachDisguise(in Player disguisingPlayer) {
+  if (EntityExists(disguiseBot(disguisingPlayer))) {
+    DestroyDummyBot(opps(), 5);
+  } else {
+    StartCamWith1PTransition(
+      player: disguisingPlayer,
+      eyePosition: RayCastHitPosition(EyePosition(disguisingPlayer), EyePosition(disguisingPlayer) - 5 * FacingDirectionOf(disguisingPlayer), null, null, true),
+      lookAtPosition: EyePosition(disguisingPlayer),
+    );
+  }
   disguiseBots[playerTeamIndex(disguisingPlayer)] = CreateDummyBot(HeroOf(disguisingPlayer.disguiseTarget), opps(disguisingPlayer), 5, PositionOf(disguisingPlayer), FacingDirectionOf(disguisingPlayer));
   SetStatus(disguiseBots, null, Status.PhasedOut, 1000000);
   // StartForcingPlayerOutlines(disguiseBot(disguisingPlayer), AllPlayers(opps(disguisingPlayer)), false, Color.Black, OutlineType.Occluded);
@@ -58,21 +68,22 @@ void AttachDisguise(in Player disguisingPlayer) {
   PlayEffect(AllPlayers(), PlayEffect.BadPickupEffect, TeamOf(disguisingPlayer), PositionOf(disguisingPlayer), 1);
   StopForcingPlayerPosition(disguiseBot(disguisingPlayer));
   StartForcingPlayerPosition(disguiseBot(disguisingPlayer), UpdateEveryFrame(disguisingPlayer), true);
-  StartCamera(
-    Player: disguisingPlayer,
-    EyePosition: UpdateEveryFrame(EyePosition(disguisingPlayer) + -5 * FacingDirectionOf(disguisingPlayer)),
-    LookAtPosition: UpdateEveryFrame(EyePosition(disguisingPlayer)),
-    BlendSpeed: 1000,
-  );
   StartFacing(disguiseBot(disguisingPlayer), UpdateEveryFrame(FacingDirectionOf(disguisingPlayer)), 1000, Relative.ToWorld, FacingRev.DirectionAndTurnRate);
   StartThrottleInDirection(disguiseBot(disguisingPlayer), ThrottleOf(disguisingPlayer), MagnitudeOf(ThrottleOf(disguisingPlayer)), Relative.ToPlayer, ThrottleBehavior.ReplaceExistingThrottle, ThrottleRev.DirectionAndMagnitude);
 }
 
 void DetachDisguise(in Player disguisingPlayer) {
+  if (!disguisingPlayer.disguiseTarget) return;
   SetInvisible(disguisingPlayer, InvisibleTo.None);
   PlayEffect(AllPlayers().Remove(disguisingPlayer), PlayEffect.BadExplosion, TeamOf(disguisingPlayer), EyePosition(disguisingPlayer), 1);
   DestroyEffect(disguisingPlayer.disguiseEffect);
   StopCamera(disguisingPlayer);
+  // StopCamWith1PTransition(
+  //   player: disguisingPlayer,
+  //   eyePosition: RayCastHitPosition(EyePosition(disguisingPlayer), EyePosition(disguisingPlayer) - 5 * FacingDirectionOf(disguisingPlayer), null, null, true),
+  //   lookAtPosition: EyePosition(disguisingPlayer),
+  // );
+  StartFacing(disguiseBot(disguisingPlayer), UpdateEveryFrame(FacingDirectionOf(disguisingPlayer)), 1000, Relative.ToWorld, FacingRev.DirectionAndTurnRate);
   DestroyDummyBot(opps(disguisingPlayer), 5);
   disguisingPlayer.disguiseTarget = null;
 }
