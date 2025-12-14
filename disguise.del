@@ -37,6 +37,26 @@ if (IsDummyBot())
   SetStatus(EventPlayer(), null, Status.Hacked, 0.2);
 }
 
+rule: "If Sombra crouches, make bot crouch"
+Event.OngoingPlayer
+if (disguiseMenuState == DisguiseMenuState.DISGUISED)
+if (IsCrouching())
+{
+  StartHoldingButton(disguiseBot(), Button.Crouch);
+  WaitUntil(!IsCrouching(), 1000000);
+  StopHoldingButton(disguiseBot(), Button.Crouch);
+}
+
+rule: "If Sombra jumps, make bot jump"
+Event.OngoingPlayer
+if (disguiseMenuState == DisguiseMenuState.DISGUISED)
+if (IsJumping())
+{
+  StartHoldingButton(disguiseBot(), Button.Jump);
+  WaitUntil(!IsJumping(), 1000000);
+  StopHoldingButton(disguiseBot(), Button.Jump);
+}
+
 rule: "If dummy bot dies, delete it"
 Event.OnDeath
 if (IsDummyBot())
