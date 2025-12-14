@@ -60,6 +60,7 @@ Player.Sombra
 if (IsButtonHeld(EventPlayer(), Button.Interact))
 {
   Wait(0.25, WaitBehavior.AbortWhenFalse);
+  AbortIf(!IsAlive());
   if (!(IsGameInProgress() || DEBUG_MODE)) {
     SmallMessage(EventPlayer(), <" <0> Cannot disguise until round begins", IconString(Icon.Warning)>);
     return;
