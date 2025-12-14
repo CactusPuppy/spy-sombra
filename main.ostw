@@ -74,6 +74,17 @@ if (IsButtonHeld(EventPlayer(), Button.Interact))
   }
 }
 
+rule: "When a Sombra uses Translocator, cancel stealth"
+Event.OngoingPlayer
+Player.Sombra
+if (IsUsingAbility2())
+{
+  WaitUntil(HasStatus(EventPlayer(), Status.PhasedOut), 1);
+  AbortIf(!HasStatus(EventPlayer(), Status.PhasedOut));
+  Wait(0.95, WaitBehavior.IgnoreCondition);
+  PressButton(EventPlayer(), Button.Melee);
+}
+
 rule: "Break disguise when Sombra does aggressive action"
 Event.OngoingPlayer
 Player.Sombra
