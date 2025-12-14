@@ -69,7 +69,7 @@ playervar Any disguiseEffect;
 void AttachDisguise(in Player disguisingPlayer) {
   disguiseBots[playerTeamIndex(disguisingPlayer)] = CreateDummyBot(HeroOf(disguisingPlayer.disguiseTarget), opps(disguisingPlayer), 5, PositionOf(disguisingPlayer), FacingDirectionOf(disguisingPlayer));
   SetStatus(disguiseBots, null, Status.PhasedOut, 1000000);
-  StartForcingPlayerOutlines(disguiseBot(disguisingPlayer), AllPlayers(opps(disguisingPlayer)), false, null, OutlineType.Default);
+  // StartForcingPlayerOutlines(disguiseBot(disguisingPlayer), AllPlayers(opps(disguisingPlayer)), false, Color.Black, OutlineType.Occluded);
   DisableMovementCollisionWithPlayers(disguiseBots);
   StartForcingDummyBotName(disguiseBot(disguisingPlayer), $"{disguisingPlayer.disguiseTarget}");
   SetInvisible(disguisingPlayer, InvisibleTo.All);
