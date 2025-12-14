@@ -1,4 +1,4 @@
-globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG", "Debug Mode Enabled", true, -100);
+globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG", "Debug Mode Enabled", false, -100);
 
 rule: "[DEBUG] Create bots to clone"
 if (DEBUG_MODE)
