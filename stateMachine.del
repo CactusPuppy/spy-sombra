@@ -54,6 +54,7 @@ void DMStateMachine_DISGUISED() {
       break;
     case DisguiseMenuEvent.DROPPED_DISGUISE:
       DetachDisguise(EventPlayer());
+      disguiseMenuState = DisguiseMenuState.CLOSED;
       break;
   }
 }

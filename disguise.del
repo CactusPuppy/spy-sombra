@@ -37,6 +37,26 @@ if (IsDummyBot())
   SetStatus(EventPlayer(), null, Status.Hacked, 0.2);
 }
 
+rule: "If Sombra crouches, make bot crouch"
+Event.OngoingPlayer
+if (disguiseMenuState == DisguiseMenuState.DISGUISED)
+if (IsCrouching())
+{
+  StartHoldingButton(disguiseBot(), Button.Crouch);
+  WaitUntil(!IsCrouching(), 1000000);
+  StopHoldingButton(disguiseBot(), Button.Crouch);
+}
+
+rule: "If Sombra jumps, make bot jump"
+Event.OngoingPlayer
+if (disguiseMenuState == DisguiseMenuState.DISGUISED)
+if (IsJumping())
+{
+  StartHoldingButton(disguiseBot(), Button.Jump);
+  WaitUntil(!IsJumping(), 1000000);
+  StopHoldingButton(disguiseBot(), Button.Jump);
+}
+
 rule: "If dummy bot dies, delete it"
 Event.OnDeath
 if (IsDummyBot())
@@ -49,7 +69,7 @@ playervar Any disguiseEffect;
 void AttachDisguise(in Player disguisingPlayer) {
   disguiseBots[playerTeamIndex(disguisingPlayer)] = CreateDummyBot(HeroOf(disguisingPlayer.disguiseTarget), opps(disguisingPlayer), 5, PositionOf(disguisingPlayer), FacingDirectionOf(disguisingPlayer));
   SetStatus(disguiseBots, null, Status.PhasedOut, 1000000);
-  StartForcingPlayerOutlines(disguiseBot(disguisingPlayer), AllPlayers(opps(disguisingPlayer)), false, null, OutlineType.Default);
+  // StartForcingPlayerOutlines(disguiseBot(disguisingPlayer), AllPlayers(opps(disguisingPlayer)), false, Color.Black, OutlineType.Occluded);
   DisableMovementCollisionWithPlayers(disguiseBots);
   StartForcingDummyBotName(disguiseBot(disguisingPlayer), $"{disguisingPlayer.disguiseTarget}");
   SetInvisible(disguisingPlayer, InvisibleTo.All);
