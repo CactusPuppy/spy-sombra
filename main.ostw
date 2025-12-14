@@ -38,6 +38,12 @@ Number MENU_Y: 0.5;
 Team opps(Player p = EventPlayer()): OppositeTeamOf(TeamOf(p));
 Player[] disguisableOppsRaw(Player p = EventPlayer()): AllPlayers(opps(p)).Filter(p2 => SlotOf(p2) < 5 && HasSpawned(p2));
 
+rule: "Disable Inspector if not debugging" -100
+if (DEBUG_MODE == false)
+{
+  DisableInspectorRecording();
+}
+
 rule: 'Disable scoreboard (it gives the bot away)'
 Event.OngoingPlayer
 if (DEBUG_MODE == false)
