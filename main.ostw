@@ -1,3 +1,6 @@
+import "OSTWUtils/String.del";
+import "OSTWUtils/OnScreenText.del";
+
 globalvar Number i;
 globalvar Button PREVIOUS_DISGUISE_BUTTON = Button.PrimaryFire;
 globalvar Button NEXT_DISGUISE_BUTTON = [
@@ -24,11 +27,16 @@ playervar DisguiseMenuState disguiseMenuState = DisguiseMenuState.CLOSED;
 playervar DisguiseMenuEvent disguiseMenuEvent = DisguiseMenuEvent.NONE;
 
 playervar Number disguiseSelectionIndex; // The player's selection within the disguise menu
-playervar Number disguisedIndex; // The player's actual disguise
+playervar Player disguiseTarget;
 playervar Any[] disguiseMenuTexts = [];
+playervar Player[] disguisableOpps;
 
+Number MENU_SPACING: 0.7;
+Number MENU_MIDPOINT(in Player p = EventPlayer()): p.disguisableOpps.Length / 2;
+Number MENU_ITEM_X(in Player p = EventPlayer(), in Number i): (i - MENU_MIDPOINT(p)) / 2;
+Number MENU_Y: 0.5;
 Team opps(Player p = EventPlayer()): OppositeTeamOf(TeamOf(p));
-Player[] disguisableOpps(Player p = EventPlayer()): AllPlayers(opps(p)).Filter(p2 => SlotOf(p2) < 5);
+Player[] disguisableOppsRaw(Player p = EventPlayer()): AllPlayers(opps(p)).Filter(p2 => SlotOf(p2) < 5 && HasSpawned(p2));
 
 rule: 'Disable scoreboard (it gives the bot away)'
 Event.OngoingPlayer
@@ -45,9 +53,13 @@ Player.Sombra
 if (IsButtonHeld(EventPlayer(), Button.Interact))
 {
   Wait(0.25, WaitBehavior.AbortWhenFalse);
+  if (!(IsGameInProgress() || DEBUG_MODE)) {
+    SmallMessage(EventPlayer(), <" <0> Cannot disguise until round begins", IconString(Icon.Warning)>);
+    return;
+  }
   TriggerDMEvent(DisguiseMenuEvent.REQUEST_OPEN);
   WaitUntil(!IsButtonHeld(EventPlayer(), Button.Interact), 1000000);
-  if (disguiseSelectionIndex < disguisableOpps().Length) {
+  if (disguiseSelectionIndex < disguisableOpps.Length) {
     TriggerDMEvent(DisguiseMenuEvent.SELECT_DISGUISE);
   } else {
     TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
@@ -74,6 +86,14 @@ if (!IsDummyBot())
   TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
 }
 
+rule: "Break disguise when between rounds or match complete"
+Event.OngoingPlayer
+Player.Sombra
+if (IsBetweenRounds() || IsMatchComplete())
+{
+  TriggerDMEvent(DisguiseMenuEvent.DROPPED_DISGUISE);
+}
+
 rule: "Move disguise selection to the previous option"
 Event.OngoingPlayer
 if (IsButtonHeld(EventPlayer(), PREVIOUS_DISGUISE_BUTTON))
@@ -81,7 +101,7 @@ if (IsButtonHeld(EventPlayer(), PREVIOUS_DISGUISE_BUTTON))
   AbortIf(disguiseMenuState != DisguiseMenuState.OPEN);
   disguiseSelectionIndex -= 1;
   if (disguiseSelectionIndex < 0) {
-    disguiseSelectionIndex = disguisableOpps().Length;
+    disguiseSelectionIndex = disguisableOpps.Length;
   }
 }
 
@@ -91,7 +111,7 @@ if (IsButtonHeld(EventPlayer(), NEXT_DISGUISE_BUTTON))
 {
   AbortIf(disguiseMenuState != DisguiseMenuState.OPEN);
   disguiseSelectionIndex += 1;
-  if (disguiseSelectionIndex > disguisableOpps().Length) {
+  if (disguiseSelectionIndex > disguisableOpps.Length) {
     disguiseSelectionIndex = 0;
   }
 }
@@ -100,29 +120,57 @@ void OpenDisguiseMenu() playervar "[SUB]: Open the disguise menu for the player"
   if (PREVIOUS_DISGUISE_BUTTON == Button.PrimaryFire) SetPrimaryFireEnabled(EventPlayer(), false);
   DisallowButton(EventPlayer(), PREVIOUS_DISGUISE_BUTTON);
   DisallowButton(EventPlayer(), NEXT_DISGUISE_BUTTON);
-  disguiseSelectionIndex = disguisedIndex;
-  for (i = 0; disguisableOpps().Length; 1) {
-    CreateHudText(
-      VisibleTo:          EntityExists(disguisableOpps()[EvaluateOnce(i)]) ? EventPlayer() : null,
-      Header:             $" {HeroIconString(HeroOf(disguisableOpps()[EvaluateOnce(i)]))} ",
-      Subheader:          HeroOf(disguisableOpps()[EvaluateOnce(i)]),
-      Text:               disguisableOpps()[EvaluateOnce(i)],
-      SortOrder:          EvaluateOnce(i),
-      HeaderColor:        EventPlayer().disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.Gray,
-      Reevaluation:       HudTextRev.VisibleToStringAndColor,
-      Spectators:         Spectators.VisibleNever
+  disguisableOpps = disguisableOppsRaw();
+  if (EntityExists(disguiseTarget))
+    disguiseSelectionIndex = disguisableOpps.IndexOf(disguiseTarget);
+  for (i = 0; disguisableOpps.Length; 1) {
+    OnScreenText.CreateOnScreenText(
+      VisibleTo:          EntityExists(disguisableOpps[EvaluateOnce(i)]) ? EventPlayer() : null,
+      Header:             $" {HeroIconString(HeroOf(disguisableOpps[EvaluateOnce(i)]))} ",
+      PositionX:          MENU_ITEM_X(EventPlayer(), EvaluateOnce(i)),
+      PositionY:          MENU_Y + 0.25,
+      Scale:              4,
+      Reevaluation:       InworldTextRev.VisibleToPositionAndString,
+      Color:              Color.White,
+      Spectators:         Spectators.DefaultVisibility,
+      PerspectivePlayer:  EventPlayer(),
+    );
+    disguiseMenuTexts.ModAppend(LastTextID());
+    OnScreenText.CreateOnScreenText(
+      VisibleTo:          EntityExists(disguisableOpps[EvaluateOnce(i)]) ? EventPlayer() : null,
+      Header:             disguisableOpps[EvaluateOnce(i)],
+      PositionX:          MENU_ITEM_X(EventPlayer(), EvaluateOnce(i)),
+      PositionY:          MENU_Y,
+      Scale:              1.25,
+      Reevaluation:       InworldTextRev.VisibleToPositionStringAndColor,
+      Color:              disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.White,
+      Spectators:         Spectators.DefaultVisibility,
+      PerspectivePlayer:  EventPlayer(),
     );
     disguiseMenuTexts.ModAppend(LastTextID());
   }
-  CreateHudText(
+  OnScreenText.CreateOnScreenText(
     VisibleTo:            EventPlayer(),
     Header:               $" {IconString(Icon.No)} ",
-    Subheader:            "No Disguise",
-    Text:                 "Cancel",
-    SortOrder:            EvaluateOnce(i),
-    HeaderColor:          EventPlayer().disguiseSelectionIndex == EvaluateOnce(i) ? Color.Yellow : Color.Red,
-    Reevaluation:         HudTextRev.VisibleToStringAndColor,
-    Spectators:           Spectators.VisibleNever
+    PositionX:            MENU_ITEM_X(EventPlayer(), disguisableOpps.Length),
+    PositionY:            MENU_Y + 0.25,
+    Scale:                4,
+    Reevaluation:         InworldTextRev.VisibleToAndPosition,
+    Color:                Color.White,
+    Spectators:           Spectators.DefaultVisibility,
+    PerspectivePlayer:    EventPlayer(),
+  );
+  disguiseMenuTexts.ModAppend(LastTextID());
+  OnScreenText.CreateOnScreenText(
+    VisibleTo:            EventPlayer(),
+    Header:               "No Disguise",
+    PositionX:            MENU_ITEM_X(EventPlayer(), disguisableOpps.Length),
+    PositionY:            MENU_Y,
+    Scale:                1.25,
+    Reevaluation:         InworldTextRev.VisibleToPositionAndColor,
+    Color:                disguiseSelectionIndex == disguisableOpps.Length ? Color.Yellow : Color.White,
+    Spectators:           Spectators.DefaultVisibility,
+    PerspectivePlayer:    EventPlayer(),
   );
   disguiseMenuTexts.ModAppend(LastTextID());
 }
@@ -132,7 +180,7 @@ void CloseDisguiseMenu() playervar "[SUB]: Close the disguise menu for the playe
   AllowButton(EventPlayer(), PREVIOUS_DISGUISE_BUTTON);
   AllowButton(EventPlayer(), NEXT_DISGUISE_BUTTON);
   while (disguiseMenuTexts.Length > 0) {
-    DestroyHudText(disguiseMenuTexts.First);
+    DestroyInWorldText(disguiseMenuTexts.First);
     disguiseMenuTexts.ModRemoveByIndex(0);
   }
 }

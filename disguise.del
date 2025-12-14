@@ -46,13 +46,12 @@ if (IsDummyBot())
 
 
 playervar Any disguiseEffect;
-Player disguiseTarget(in Player p = EventPlayer()): disguisableOpps(p)[p.disguisedIndex];
 void AttachDisguise(in Player disguisingPlayer) {
-  disguiseBots[playerTeamIndex(disguisingPlayer)] = CreateDummyBot(HeroOf(disguiseTarget(disguisingPlayer)), opps(disguisingPlayer), 5, PositionOf(disguisingPlayer), FacingDirectionOf(disguisingPlayer));
-  // MinWait();
+  disguiseBots[playerTeamIndex(disguisingPlayer)] = CreateDummyBot(HeroOf(disguisingPlayer.disguiseTarget), opps(disguisingPlayer), 5, PositionOf(disguisingPlayer), FacingDirectionOf(disguisingPlayer));
   SetStatus(disguiseBots, null, Status.PhasedOut, 1000000);
+  StartForcingPlayerOutlines(disguiseBot(disguisingPlayer), AllPlayers(opps(disguisingPlayer)), false, null, OutlineType.Default);
   DisableMovementCollisionWithPlayers(disguiseBots);
-  StartForcingDummyBotName(disguiseBot(disguisingPlayer), $"{disguiseTarget(disguisingPlayer)}");
+  StartForcingDummyBotName(disguiseBot(disguisingPlayer), $"{disguisingPlayer.disguiseTarget}");
   SetInvisible(disguisingPlayer, InvisibleTo.All);
   disguisingPlayer.disguiseEffect = CreateEffect(
     VisibleTo: AllPlayers(TeamOf(disguisingPlayer)),
@@ -62,6 +61,7 @@ void AttachDisguise(in Player disguisingPlayer) {
     Radius: 0,
     Reevaluation: EffectRev.VisibleToPositionAndRadius,
   );
+  PlayEffect(AllPlayers(), PlayEffect.BadPickupEffect, TeamOf(disguisingPlayer), PositionOf(disguisingPlayer), 1);
   StopForcingPlayerPosition(disguiseBot(disguisingPlayer));
   StartForcingPlayerPosition(disguiseBot(disguisingPlayer), UpdateEveryFrame(disguisingPlayer), true);
   StartCamera(
@@ -76,7 +76,9 @@ void AttachDisguise(in Player disguisingPlayer) {
 
 void DetachDisguise(in Player disguisingPlayer) {
   SetInvisible(disguisingPlayer, InvisibleTo.None);
+  PlayEffect(AllPlayers().Remove(disguisingPlayer), PlayEffect.BadExplosion, TeamOf(disguisingPlayer), EyePosition(disguisingPlayer), 1);
   DestroyEffect(disguisingPlayer.disguiseEffect);
   StopCamera(disguisingPlayer);
   DestroyDummyBot(opps(disguisingPlayer), 5);
+  disguisingPlayer.disguiseTarget = null;
 }
