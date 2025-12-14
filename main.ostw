@@ -47,10 +47,11 @@ if (DEBUG_MODE == false)
 rule: 'Disable scoreboard (it gives the bot away)'
 Event.OngoingPlayer
 if (DEBUG_MODE == false)
-if (IsInSetup() || IsGameInProgress())
+if (IsGameInProgress())
 {
   DisableScoreboard();
-  WaitUntil(IsInSetup() == IsGameInProgress(), 1000000);
+  WaitUntil(!IsGameInProgress(), 1000000);
+  EnableScoreboard();
 }
 
 rule: "When a Sombra holds Interact, open the disguise menu"
