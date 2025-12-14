@@ -3,32 +3,6 @@ globalvar Player[] disguiseBots = [];
 Number playerTeamIndex(Player p = EventPlayer()): TeamOf(p) == Team.Team2 ? 1 : 0;
 Player disguiseBot(Player p = EventPlayer()): disguiseBots[playerTeamIndex(p)];
 
-disabled rule: "Initialize disguise bots"
-if (IsAssemblingHeroes())
-{
-  WaitUntil(!IsAssemblingHeroes(), 1000000);
-  disguiseBots[0] = CreateDummyBot(
-    Hero: Hero.Echo,
-    Team: Team.Team2,
-    Slot: 5,
-    Position: Vector(0, 1000, 0),
-  );
-
-  disguiseBots[1] = CreateDummyBot(
-    Hero: Hero.Echo,
-    Team: Team.Team1,
-    Slot: 5,
-    Position: Vector(0, 1000, 0),
-  );
-  SetStatus(disguiseBots, null, Status.PhasedOut, 1000000);
-  DisableMovementCollisionWithPlayers(disguiseBots);
-  StartForcingPlayerPosition(disguiseBots, 1000 * Up(), false);
-  SetInvisible(disguiseBots, InvisibleTo.All);
-  WaitUntil(IsAssemblingHeroes() || IsMatchComplete(), 1000000);
-  DestroyDummyBot(disguiseBots[0]);
-  DestroyDummyBot(disguiseBots[1]);
-}
-
 rule: "Prevent dummy bot from yapping"
 Event.OngoingPlayer
 if (IsDummyBot())
